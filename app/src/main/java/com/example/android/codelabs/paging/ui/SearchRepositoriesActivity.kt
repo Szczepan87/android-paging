@@ -68,10 +68,13 @@ class SearchRepositoriesActivity : AppCompatActivity() {
     }
 
     private fun initAdapter() {
-        binding.list.adapter = adapter
+        binding.list.adapter = adapter.withLoadStateHeaderAndFooter(
+                header = ReposLoadStateAdapter { adapter.retry() },
+                footer = ReposLoadStateAdapter { adapter.retry() }
+        )
     }
 
-    private fun search(query: String){
+    private fun search(query: String) {
         // cancel previous job before starting new
         searchJob?.cancel()
         searchJob = lifecycleScope.launch {
