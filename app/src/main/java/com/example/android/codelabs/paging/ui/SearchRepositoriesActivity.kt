@@ -20,10 +20,13 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.ExperimentalPagingApi
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.example.android.codelabs.paging.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
@@ -55,7 +58,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         // add dividers between RecyclerView's row items
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.list.addItemDecoration(decoration)
-
+        binding.retryButton.setOnClickListener { adapter.retry() }
         initAdapter()
         val query = savedInstanceState?.getString(LAST_SEARCH_QUERY) ?: DEFAULT_QUERY
         search(query)
@@ -72,6 +75,28 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 header = ReposLoadStateAdapter { adapter.retry() },
                 footer = ReposLoadStateAdapter { adapter.retry() }
         )
+        adapter.addLoadStateListener { loadState ->
+            // if refresh successful show list
+            binding.list.isVisible = loadState.source.refresh is LoadState.NotLoading
+            // if initial load or refresh show spinner
+            binding.progressBar.isVisible = loadState.source.refresh is LoadState.Loading
+            // if loading fails show button
+            binding.retryButton.isVisible = loadState.source.refresh is LoadState.Error
+
+
+            // show any error on toast
+            val errorState = loadState.source.append as? LoadState.Error
+                    ?: loadState.source.prepend as? LoadState.Error
+                    ?: loadState.append as? LoadState.Error
+                    ?: loadState.prepend as? LoadState.Error
+            errorState?.let {
+                Toast.makeText(
+                        this,
+                        "\uD83D\uDE28 Wooops ${it.error}",
+                        Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun search(query: String) {
@@ -127,16 +152,6 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 search(it.toString())
                 binding.list.scrollToPosition(0)
             }
-        }
-    }
-
-    private fun showEmptyList(show: Boolean) {
-        if (show) {
-            binding.emptyList.visibility = View.VISIBLE
-            binding.list.visibility = View.GONE
-        } else {
-            binding.emptyList.visibility = View.GONE
-            binding.list.visibility = View.VISIBLE
         }
     }
 
